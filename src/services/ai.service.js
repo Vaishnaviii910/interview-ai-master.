@@ -1,10 +1,10 @@
-const {GoogleGenAI} = require("@google/genai")
+const { GoogleGenerativeAI } = require("@google/generative-ai");
 const {z} = require("zod")
 const {zodToJsonSchema} = require("zod-to-json-schema")
 
-const ai = new GoogleGenAI({
-    apiKey: process.env.GOOGLE_GENAI_API_KEY
-})
+const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GENAI_API_KEY);
+const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+
 
 // ye schema hum AI ke liye create karre hai
 
@@ -32,22 +32,33 @@ const interviewReportSchema = z.object({
 })
 
 
-async function generateInterviewReport({resume,selfDescription,jobDescription}){
-    
-    const prompt = `Generate an interview report fora candidiate with the following details:
-                    Resume:${resume}
-                    Self Description:${selfDescription}
-                    Job Description : ${jobDescription}
-    `
-    const response = await ai.models.generateContent({
-        model:"gemini-2.5-flash",
-        contents: prompt,
-        config: {
-            responseMimeType:"application/json",
-            responseSchema: zodToJsonSchema(interviewReportSchema),
-        }
-    })
+async function generateInterviewReport({ resume, selfDescription, jobDescription }) {
+  const prompt = `
+You are an expert interview analyst AI.
+Generate a complete JSON object strictly following this schema:
 
-     return JSON.parse(response.text)
+${JSON.stringify(zodToJsonSchema(interviewReportSchema), null, 2)}
+
+Input data:
+Resume: ${resume}
+Self Description: ${selfDescription}
+Job Description: ${jobDescription}
+
+Output ONLY valid JSON — no explanations, no markdown, no text outside the JSON object.
+  `;
+
+  const response = await ai.models.generateContent({
+    model: "gemini-2.5-flash", // or gemini-2.5-flash if supported
+    contents: [{ role: "user", parts: [{ text: prompt }] }]
+  });
+
+  const text = response.response.text(); // depends on SDK version
+  try {
+    return JSON.parse(text);
+  } catch (err) {
+    console.error("JSON parse error:", err, "\nRaw output:\n", text);
+    throw new Error("Gemini did not return valid JSON");
+  }
 }
+
 module.exports = generateInterviewReport
