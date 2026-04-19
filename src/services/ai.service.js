@@ -1,64 +1,155 @@
 const { GoogleGenerativeAI } = require("@google/generative-ai");
-const {z} = require("zod")
-const {zodToJsonSchema} = require("zod-to-json-schema")
+const { z } = require("zod");
 
+// ✅ Initialize Gemini
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GENAI_API_KEY);
 const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
 
-// ye schema hum AI ke liye create karre hai
-
+// ✅ Zod Schema
 const interviewReportSchema = z.object({
-    matchScore :z.number().describe("A score between 0 and 100 indicating how well the candidate's profile matches the job description"),
-    technicalQuestions: z.array(z.object({
-        question:z.string().describe("The technical question can be asked in the interview"),
-        intention:z.string().describe("The intention of interviewer behind asking the question"),
-        answer :z.string().describe("How to answer this question, what points to cover, what approach to take etc.")
-    })).describe("Technical question that can be asked in the interview along with their intention and how to answer them"),
-    behavioralQuestions:z.array(z.object({
-        question:z.string().describe("The behavioral question can be asked in the interview"),
-        intention:z.string().describe("The intention of interviewer behind asking the question"),
-        answer :z.string().describe("How to answer this question, what points to cover, what approach to take etc.")
-    })).describe("Behavioral question that can be asked in the interview along with their intention and how to answer them"),
-    skillGaps:z.array(z.object({
-        skill :z.string().describe("The skill which the candidate is lacking"),
-        severity : z.enum(["low","medium","high"]).describe("The severity of this skill gap, i.e. how important is this skill")
-    })).describe("List of skill gaps in the candidate's profile along with their severity"),
-    preparationPlan:z.array(z.object({
-        day: z.number().describe("The day number in the preparation plan, starting from 1"),
-        focus:z.string().describe("The main focus of this day in the preparation plan, e.g. data structure, system design,mock interviews,etc."),
-        tasks:z.array(z.string()).describe("List of tasks to be done on this day to follow the preparation plan, e.g. read a specific book")
-    })).describe("A day-wise preparation plan for the candidate to follow in order to prepare for the interview effectively")
-})
+  matchScore: z.number().min(0).max(100),
+
+  technicalQuestions: z.array(
+    z.object({
+      question: z.string(),
+      intention: z.string(),
+      answer: z.string(),
+    })
+  ),
+
+  behavioralQuestions: z.array(
+    z.object({
+      question: z.string(),
+      intention: z.string(),
+      answer: z.string(),
+    })
+  ),
+
+  skillGaps: z.array(
+    z.object({
+      skill: z.string(),
+      severity: z.enum(["low", "medium", "high"]),
+    })
+  ),
+
+  preparationPlan: z.array(
+    z.object({
+      day: z.number(),
+      focus: z.string(),
+      tasks: z.array(z.string()),
+    })
+  ),
+});
 
 
+// ✅ MAIN FUNCTION
 async function generateInterviewReport({ resume, selfDescription, jobDescription }) {
   const prompt = `
 You are an expert interview analyst AI.
-Generate a complete JSON object strictly following this schema:
 
-${JSON.stringify(zodToJsonSchema(interviewReportSchema), null, 2)}
+Return STRICTLY this JSON:
 
-Input data:
+{
+  "matchScore": number (0-100),
+  "technicalQuestions": [
+    {
+      "question": string,
+      "intention": string,
+      "answer": string
+    }
+  ],
+  "behavioralQuestions": [
+    {
+      "question": string,
+      "intention": string,
+      "answer": string
+    }
+  ],
+  "skillGaps": [
+    {
+      "skill": string,
+      "severity": "low" | "medium" | "high"
+    }
+  ],
+  "preparationPlan": [
+    {
+      "day": number,
+      "focus": string,
+      "tasks": string[]
+    }
+  ]
+}
+
+IMPORTANT RULES:
+- Do NOT skip any field
+- Do NOT return empty object
+- Do NOT wrap inside another key
+- Do NOT return null
+- Do NOT include markdown (no \`\`\`)
+- Return ONLY pure JSON
+
+Input:
 Resume: ${resume}
 Self Description: ${selfDescription}
 Job Description: ${jobDescription}
+`;
 
-Output ONLY valid JSON — no explanations, no markdown, no text outside the JSON object.
-  `;
-
-  const response = await ai.models.generateContent({
-    model: "gemini-2.5-flash", // or gemini-2.5-flash if supported
-    contents: [{ role: "user", parts: [{ text: prompt }] }]
-  });
-
-  const text = response.response.text(); // depends on SDK version
   try {
-    return JSON.parse(text);
+    // ✅ Call Gemini
+    const result = await model.generateContent({
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
+      generationConfig: {
+        responseMimeType: "application/json",
+      },
+    });
+
+    // ✅ Safe extraction
+    const rawText =
+      result.response?.text?.() ||
+      result.response?.candidates?.[0]?.content?.parts?.[0]?.text ||
+      "";
+
+    console.log("🧾 RAW AI RESPONSE:\n", rawText);
+
+    // ✅ Clean markdown if any
+    const cleanedText = rawText
+      .replace(/```json/g, "")
+      .replace(/```/g, "")
+      .trim();
+
+    // ✅ Extract JSON safely
+    const jsonStart = cleanedText.indexOf("{");
+    const jsonEnd = cleanedText.lastIndexOf("}");
+
+    if (jsonStart === -1 || jsonEnd === -1) {
+      throw new Error("No valid JSON found in AI response");
+    }
+
+    const finalJson = cleanedText.slice(jsonStart, jsonEnd + 1);
+
+    const parsed = JSON.parse(finalJson);
+
+    console.log("🧠 PARSED AI OUTPUT:", parsed);
+
+    // ✅ Fallback defaults (VERY IMPORTANT)
+    const safeParsed = {
+      matchScore: Number(parsed.matchScore) || 0,
+      technicalQuestions: parsed.technicalQuestions || [],
+      behavioralQuestions: parsed.behavioralQuestions || [],
+      skillGaps: parsed.skillGaps || [],
+      preparationPlan: parsed.preparationPlan || [],
+    };
+
+    // ✅ Validate with Zod
+    const validatedData = interviewReportSchema.parse(safeParsed);
+
+    return validatedData;
+
   } catch (err) {
-    console.error("JSON parse error:", err, "\nRaw output:\n", text);
-    throw new Error("Gemini did not return valid JSON");
+    console.error("❌ AI SERVICE ERROR:", err);
+    throw new Error("Failed to generate interview report");
   }
 }
 
-module.exports = generateInterviewReport
+module.exports = generateInterviewReport;
