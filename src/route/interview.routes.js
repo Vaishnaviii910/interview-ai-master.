@@ -18,7 +18,7 @@ interviewRouter.post("/",authMiddleware.authUser,upload.single("resume"), interv
  * @access private
  */
 
-interviewRouter.get("/report/:interviewId", authMiddleware.authUser,interviewController.generateInterviewReportByIdController)
+interviewRouter.get("/report/:interviewId", authMiddleware.authUser,interviewController.getInterviewReportByIdController)
 
 /**
  * @route GET/ api/interview/

@@ -1,5 +1,8 @@
 import React, { useState } from "react";
 import "../style/interview.scss";
+import { useInterview } from "../hooks/useInterview";
+import {useNavigate} from 'react-router'
+
 
 const NAV_ITEMS = [
   { id: "technical", label: "Technical Questions" },
@@ -57,65 +60,21 @@ const RoadMapDay = ({ day }) => (
 
 const Interview = () => {
   const [activeNav, setActiveNav] = useState("technical");
+  const { report,loading } = useInterview()
+  // const {interviewId} = useParams()
 
-  const report = {
-    matchScore: 88,
-
-    technicalQuestions: [
-      {
-        question: "Explain Node.js event loop.",
-        intention: "Assess async architecture understanding.",
-        answer: "Explain phases, libuv, and non-blocking I/O.",
-      },
-      {
-        question: "Optimize MongoDB aggregation pipeline?",
-        intention: "Check database optimization.",
-        answer: "Use indexes, reduce dataset early.",
-      },
-      {
-        question: "Cache-Aside pattern with Redis?",
-        intention: "Evaluate caching strategy.",
-        answer: "Check cache → DB → update cache.",
-      },
-    ],
-
-    behavioralQuestions: [
-      {
-        question: "Tell me about a conflict you handled.",
-        intention: "Assess teamwork and communication.",
-        answer: "Use STAR method (Situation, Task, Action, Result).",
-      },
-    ],
-
-    skillGaps: [
-      { skill: "System Design", severity: "high" },
-      { skill: "CI/CD", severity: "medium" },
-      { skill: "Caching", severity: "low" },
-    ],
-
-    preparationPlan: [
-      {
-        day: 1,
-        focus: "DSA Basics",
-        tasks: ["Arrays", "Strings", "Hashmaps"],
-      },
-      {
-        day: 2,
-        focus: "Backend",
-        tasks: ["Node.js internals", "Event loop"],
-      },
-      {
-        day: 3,
-        focus: "Database",
-        tasks: ["MongoDB queries", "Indexing"],
-      },
-      {
-        day: 4,
-        focus: "System Design",
-        tasks: ["Scalability basics", "Caching"],
-      },
-    ],
-  };
+  // useEffect(()=>{
+  //   if (interviewId){
+  //     getReportById([interviewId])
+  //   }
+  // })
+  if (loading || !report){
+        return (
+          <main className="loading-screen">
+            <h1>Loading your interview plan......</h1>
+          </main>
+        )
+      }
 
   const scoreColor =
     report.matchScore >= 80
@@ -123,7 +82,6 @@ const Interview = () => {
       : report.matchScore >= 60
       ? "score--mid"
       : "score--low";
-
   return (
     <div className="interview-page">
       <div className="interview-layout">

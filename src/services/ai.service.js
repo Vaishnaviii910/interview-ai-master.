@@ -3,10 +3,10 @@ const { z } = require("zod");
 
 // ✅ Initialize Gemini
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GENAI_API_KEY);
-const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+const model = genAI.getGenerativeModel({ model: "gemini-3-flash-preview" });
 
 
-// ✅ Zod Schema
+// ✅ Zod Schema (MATCH VIDEO ORDER)
 const interviewReportSchema = z.object({
   matchScore: z.number().min(0).max(100),
 
@@ -40,18 +40,25 @@ const interviewReportSchema = z.object({
       tasks: z.array(z.string()),
     })
   ),
+
+  // ✅ IMPORTANT: title at end (same as video)
+  title: z.string().describe("The title of the job for which the interview report is generated"),
 });
 
 
 // ✅ MAIN FUNCTION
 async function generateInterviewReport({ resume, selfDescription, jobDescription }) {
   const prompt = `
-You are an expert interview analyst AI.
+Generate an interview report for a candidate.
 
-Return STRICTLY this JSON:
+Resume: ${resume}
+Self Description: ${selfDescription}
+Job Description: ${jobDescription}
+
+Return STRICT JSON:
 
 {
-  "matchScore": number (0-100),
+  "matchScore": number,
   "technicalQuestions": [
     {
       "question": string,
@@ -78,25 +85,25 @@ Return STRICTLY this JSON:
       "focus": string,
       "tasks": string[]
     }
-  ]
+  ],
+  "title": string
 }
 
 IMPORTANT RULES:
 - Do NOT skip any field
-- Do NOT return empty object
-- Do NOT wrap inside another key
+- Keep title at the end
 - Do NOT return null
-- Do NOT include markdown (no \`\`\`)
-- Return ONLY pure JSON
-
-Input:
-Resume: ${resume}
-Self Description: ${selfDescription}
-Job Description: ${jobDescription}
+- Do NOT wrap response
+- No markdown
+- ONLY JSON
+IMPORTANT:
+- Do NOT leave "answer" empty
+- Every question MUST have a detailed answer
+- Answer should explain how to respond in interview
 `;
 
   try {
-    // ✅ Call Gemini
+    // ✅ Gemini call
     const result = await model.generateContent({
       contents: [{ role: "user", parts: [{ text: prompt }] }],
       generationConfig: {
@@ -104,7 +111,7 @@ Job Description: ${jobDescription}
       },
     });
 
-    // ✅ Safe extraction
+    // ✅ Extract response safely
     const rawText =
       result.response?.text?.() ||
       result.response?.candidates?.[0]?.content?.parts?.[0]?.text ||
@@ -112,13 +119,13 @@ Job Description: ${jobDescription}
 
     console.log("🧾 RAW AI RESPONSE:\n", rawText);
 
-    // ✅ Clean markdown if any
+    // ✅ Clean response
     const cleanedText = rawText
       .replace(/```json/g, "")
       .replace(/```/g, "")
       .trim();
 
-    // ✅ Extract JSON safely
+    // ✅ Extract JSON block
     const jsonStart = cleanedText.indexOf("{");
     const jsonEnd = cleanedText.lastIndexOf("}");
 
@@ -130,18 +137,19 @@ Job Description: ${jobDescription}
 
     const parsed = JSON.parse(finalJson);
 
-    console.log("🧠 PARSED AI OUTPUT:", parsed);
+    console.log("🧠 PARSED OUTPUT:", parsed);
 
-    // ✅ Fallback defaults (VERY IMPORTANT)
+    // ✅ SAFE FALLBACK (VERY IMPORTANT)
     const safeParsed = {
       matchScore: Number(parsed.matchScore) || 0,
       technicalQuestions: parsed.technicalQuestions || [],
       behavioralQuestions: parsed.behavioralQuestions || [],
       skillGaps: parsed.skillGaps || [],
       preparationPlan: parsed.preparationPlan || [],
+      title: parsed.title ?? "Interview Report",
     };
 
-    // ✅ Validate with Zod
+    // ✅ Zod validation
     const validatedData = interviewReportSchema.parse(safeParsed);
 
     return validatedData;

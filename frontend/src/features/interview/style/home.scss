@@ -246,3 +246,92 @@
 .generate-btn:hover {
     background: linear-gradient(90deg, #e052d1 0%, #ff357a 60%, #5ec3fa 100%);
 }
+
+/* FILE PREVIEW */
+.file-preview {
+    margin-top: 0.5rem;
+    font-size: 0.9rem;
+    color: #5ec3fa;
+    background: #1a2332;
+    padding: 0.4rem 0.6rem;
+    border-radius: 0.5rem;
+    border: 1px solid #294a6d;
+    text-align: center;
+}
+
+/* REPORT HEADER IMPROVEMENT */
+.reports-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 1.2rem;
+}
+
+.report-item {
+    background: #1c2433;
+    border: 1px solid #2a3447;
+    border-radius: 1rem;
+    padding: 1.2rem;
+    cursor: pointer;
+    transition: all 0.25s ease;
+
+    &:hover {
+        transform: translateY(-6px);
+        border-color: #5ec3fa;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.35);
+    }
+}
+.recent-reports {
+    margin-top: 2.5rem;
+
+    h2 {
+        margin-bottom: 1.2rem; // 👈 adds clean gap
+    }
+}
+/* HEADER */
+.report-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 0.6rem;
+}
+
+/* TITLE */
+.report-title {
+    font-size: 0.95rem;
+    font-weight: 600;
+    line-height: 1.4;
+    color: #e6e6e6;
+}
+
+/* DATE */
+.report-meta {
+    margin-top: 0.6rem;
+    font-size: 0.8rem;
+    color: #9aa4b2;
+}
+
+/* SCORE BADGE (clean, no ugly bar) */
+.score-badge {
+    min-width: 42px;
+    text-align: center;
+    font-size: 0.75rem;
+    font-weight: 700;
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.5rem;
+}
+
+/* COLORS */
+.score-badge.high {
+    background: rgba(34,197,94,0.15);
+    color: #22c55e;
+}
+
+.score-badge.mid {
+    background: rgba(250,204,21,0.15);
+    color: #facc15;
+}
+
+.score-badge.low {
+    background: rgba(248,113,113,0.15);
+    color: #f87171;
+}
