@@ -1,10 +1,13 @@
 import axios from "axios"
 
 
+const isProduction = import.meta.env.PROD;
+const baseURL = isProduction ? "" : "http://localhost:3000";
+
 const api = axios.create({
-    baseURL: "http://localhost:3000",
+    baseURL: baseURL,
     withCredentials: true
-})
+});
 
 export async function register({ username, email, password }) {
 
