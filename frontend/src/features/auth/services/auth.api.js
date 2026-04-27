@@ -1,8 +1,12 @@
 import axios from "axios"
 
 
+// Change: Support an explicit production backend URL
 const isProduction = import.meta.env.PROD;
-const baseURL = isProduction ? "" : "http://localhost:3000";
+// Using an environment variable is better for security and flexibility
+const baseURL = isProduction 
+    ? import.meta.env.VITE_API_BASE_URL 
+    : "http://localhost:3000";
 
 const api = axios.create({
     baseURL: baseURL,
