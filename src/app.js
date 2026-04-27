@@ -14,10 +14,7 @@ app.use(cookieparser())
 // }))
 
 app.use(cors({
-  origin: [
-    "http://localhost:5173",
-    "https://interview-ai-master-ikx9.vercel.app"
-  ],
+  origin: true, // ✅ allow all origins (temporary fix)
   credentials: true
 }));
 
