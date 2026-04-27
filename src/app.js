@@ -14,10 +14,14 @@ app.use(cookieparser())
 // }))
 
 app.use(cors({
-    // Change: Use an environment variable for the frontend URL
-    origin: process.env.FRONTEND_URL, 
-    credentials: true
-}))
+  origin: [
+    "http://localhost:5173",
+    "https://interview-ai-master-ikx9.vercel.app"
+  ],
+  credentials: true
+}));
+
+app.options("*", cors());
 /* require all the routes here */
 const authRouter = require('./route/auth.routes')
 const interviewRouter = require('./route/interview.routes')
